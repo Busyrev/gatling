@@ -5,9 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 ///@ts-ignore
 const node_dig_dns_1 = __importDefault(require("node-dig-dns"));
-const http_1 = __importDefault(require("http"));
 const net_1 = __importDefault(require("net"));
-const perf_hooks_1 = require("perf_hooks");
 class Target {
     constructor(ip, port) {
         this.socket = null;
@@ -17,76 +15,44 @@ class Target {
     }
 }
 let queue = new Set();
+let ardessesSet = new Set();
 console.log('hello');
 // for (let i = 0; i < 10; i++) {
 //     queue.add(new Target("127.0.0.1", 8557));
 // }
-(0, node_dig_dns_1.default)(['rshb-in.tech', '+short'])
-    .then((result) => {
-    let adresses = result.split('\n');
-    for (let addr of adresses) {
-        console.log(addr);
-    }
-    for (let addr of adresses) {
-        for (let i = 0; i < 10; i++) {
-            queue.add(new Target(addr, 80));
+doDig();
+setInterval(() => {
+    doDig();
+}, 10000);
+function doDig() {
+    (0, node_dig_dns_1.default)(['@ns4.selectel.org', 'rshb-in.tech', '+short'])
+        .then((result) => {
+        let adresses = result.split('\n');
+        for (let addr of adresses) {
+            if (!ardessesSet.has(addr)) {
+                console.log(addr);
+                ardessesSet.add(addr);
+                for (let i = 0; i < 10; i++) {
+                    queue.add(new Target(addr, 80));
+                }
+            }
         }
-    }
-    // console.log(adresses.join(', '));
-})
-    .catch((err) => {
-    console.log('Error:', err);
-});
-let counter = 0;
-let responceTimes = 0;
-let inProgress = 0;
-function run1(ip) {
-    let start = perf_hooks_1.performance.now();
-    inProgress++;
-    const options = {
-        setHost: false,
-        host: ip,
-        port: 80,
-        path: '/',
-        method: 'GET',
-        headers: {
-            'Host': 'rshb-in.tech',
-            'X-Email-Id': 'busyrev@gmail.com',
-        },
-    };
-    const req = http_1.default.request(options, res => {
-        counter++;
-        let end = perf_hooks_1.performance.now();
-        // console.log(end - start);
-        responceTimes += end - start;
-        run1(ip);
-        res.on('data', d => { });
-        res.on('end', () => {
-            inProgress--;
-        });
+        // console.log(adresses.join(', '));
+    })
+        .catch((err) => {
+        console.log('Error:', err);
     });
-    req.on('error', error => {
-        console.error(error);
-    });
-    req.end();
 }
-// let text = "GET / HTTP/1.1\r\n"
-// + "Host: rshb-in.tech\r\n"
-// + "User-Agent: mike\r\n"
-// + "X-Email-Id: busyrev@gmail.com\r\n"
-// + "Accept-Encoding: gzip, deflate\r\n"
-// + "Connection: Keep-Alive\r\n\r\n"
-let text = "GET /get HTTP/1.1\r\n"
-    // + "Host: rshb-in.tech\r\n"
-    // + "User-Agent: mike\r\n"
-    + "X-Email-Id: busyrev@gmail.com\r\n"
-    // + "Accept-Encoding: gzip, deflate\r\n"
-    + "Connection: Keep-Alive\r\n\r\n";
+let counter = 0;
+let inProgress = 0;
 let closes = 0;
 let drains = 0;
 let errors = 0;
 let totalRequestsMade = 0;
 let totalRequestsConfirmed = 0;
+let text = "GET /get HTTP/1.1\r\n"
+    // + "Accept-Encoding: br, gzip, deflate\r\n"
+    + "X-Email-Id: busyrev@gmail.com\r\n\r\n";
 setInterval(() => {
     let targets = [];
     for (let target of queue.values()) {
@@ -151,14 +117,12 @@ function fuckClient(target) {
     // console.log('writeResult: ' + writeResult);
 }
 setInterval(() => {
-    let avgReqTime = responceTimes / counter;
     let mem = process.memoryUsage();
-    console.log('ops: ' + counter + ', avg time ms: ' + Math.round(avgReqTime) + ', inProgress: ' + inProgress, ', rss: ' + Math.round(mem.rss / (1024 * 1024)) + 'mb');
-    console.log('closes: ' + closes + ', drains: ' + drains + ', errors: ' + errors, ' totalRequestsMade: ' + totalRequestsMade + ' totalRequestsConfirmed: ' + totalRequestsConfirmed);
+    console.log('ops: ' + counter + ', inProgress: ' + inProgress, ', rss: ' + Math.round(mem.rss / (1024 * 1024)) + 'mb');
+    console.log('closes: ' + closes + ', drains: ' + drains + ', errors: ' + errors, ' totalRequestsMade: ' + totalRequestsMade + ' totalRequestsConfirmed: ' + totalRequestsConfirmed + ' pid: ' + process.pid);
     closes = 0;
     drains = 0;
     errors = 0;
     counter = 0;
-    responceTimes = 0;
 }, 1000);
 //# sourceMappingURL=index.js.map
